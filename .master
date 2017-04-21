@@ -1,0 +1,318 @@
+#include <Wire.h>
+#define ON 0
+#define OFF 1
+  
+  
+static int speed1 = 0;
+static int speed2 = 0;
+const int pingPin = 26;
+long duration,cm;          
+  
+void setup()
+{
+Wire.begin(); // join i2c bus (address optional for master)
+Serial.begin(9600);
+}
+
+long check()
+{
+            pinMode(pingPin, OUTPUT);
+            digitalWrite(pingPin, LOW);
+            delayMicroseconds(2);
+            digitalWrite(pingPin, HIGH);
+            delayMicroseconds(5);
+            digitalWrite(pingPin, LOW);
+ 
+            pinMode(pingPin, INPUT);
+            duration = pulseIn(pingPin, HIGH);
+ 
+            cm = microsecondsToCentimeters(duration);
+     
+     return cm;
+}
+
+void ultrasoon()
+{
+  
+  check();
+  
+  if (cm < 15 )
+     {
+          driveStop(); 
+          while(1)
+          {
+            Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+            Wire.write(0);
+            Wire.write(2);
+            Wire.write(75);
+            Wire.write(75);
+            Wire.endTransmission(); // stop transmitting
+            
+            
+            check();
+            
+           if (cm > 30)
+           {
+               driveStop();
+               break;
+           }    
+          }
+         
+     } 
+  
+  
+
+  delay(100);
+}
+
+long microsecondsToCentimeters(long microseconds)
+{
+ 
+  return microseconds / 29 / 2  ;
+}
+
+
+void Automatisch()//automatisch laten rijden
+{
+  static int y = 0;
+  static int i = 70;
+  
+  while(1)
+  {
+      char x = Serial.read();  
+    
+      check();
+   
+      if(cm >= 55 )
+      {
+            Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+            Wire.write(0);
+            Wire.write(1);
+            Wire.write(150);
+            Wire.write(150);
+            Wire.endTransmission();
+                     
+      } 
+      
+      if (cm < 55 && y <= 70 && i == 70)
+      {
+            Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+            Wire.write(0);
+            Wire.write(1);
+            Wire.write(60);
+            Wire.write(120);
+            Wire.endTransmission();
+            y++;
+       } 
+       
+        if (cm < 55 && y > 70 )
+       {
+            Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+            Wire.write(0);
+            Wire.write(1);
+            Wire.write(120);
+            Wire.write(60);
+            Wire.endTransmission();
+            i--;
+            
+            if(i == 0)
+            {
+              y = 0;
+              i = 70; 
+            }
+       } 
+      
+      if(x == '1')
+         break;
+         
+      delay(100);
+      
+  }
+}
+
+
+void driveForward() // Het vooruit rijden van de RP6
+{
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(1);
+      Wire.write(speed1);
+      Wire.write(speed2);
+      Wire.endTransmission(); // stop transmitting 
+}
+  
+void driveBackward() // Het achteruit rijden van de RP6
+{
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(2);
+      Wire.write(speed1);
+      Wire.write(speed2);
+      Wire.endTransmission(); // stop transmitting
+}
+  
+void driveLeft() // Naar links
+{
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(4);
+      //Wire.write(param1);
+      //Wire.write(param2);
+      Wire.endTransmission(); // stop transmitting
+}
+  
+void driveRight() // Naar rechts
+{
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(5);
+      //Wire.write(param1);
+      //Wire.write(param2);
+      Wire.endTransmission(); // stop transmitting
+}
+  
+void driveStop()
+{
+      speed1 = 0;
+      speed2 = 0;
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(6);
+      Wire.endTransmission(); // stop transmitting
+}
+  
+void ledStatus(int status) // Uit of aan lichten
+{
+    if(status == 0)
+    {
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(3);
+      Wire.write(0b000000);
+      Wire.endTransmission(); // stop transmitting
+    }
+    else
+    {
+      Wire.beginTransmission(5); // transmit to device #5 in 7Bit-Format, #10 in 8Bit-Format
+      Wire.write(0);
+      Wire.write(3);
+      Wire.write(0b111111);
+      Wire.endTransmission(); // stop transmitting
+    }
+}
+  
+void driveSpeedLeft()
+{
+      speed1 -= 10;
+      speed2 += 10;
+        
+   if (speed1 < 5)
+       speed1 = 10;
+         
+  if (speed2 >= 170)
+  {
+      speed1 = 150;
+      speed2 = 170;
+      Serial.println("Begrenzing");
+  } 
+} 
+  
+void driveSpeedRight()
+{
+      speed1 += 10;
+      speed2 -= 10;
+    
+  if (speed2 < 5)
+     speed2 = 10;
+    
+  if (speed1 >= 170)
+  {
+      speed1 = 170;
+      speed2 = 150;
+      Serial.println("Begrenzing");
+  } 
+} 
+  
+void driveSpeed(int value)
+{
+  if (value == 0)
+  {
+      speed1 += 20;
+      speed2 += 20;
+  }   
+  else if (value == 1)
+  {
+      speed1 -= 20;
+      speed2 -= 20;
+  }
+  if (speed1 >= 180)
+  {
+      speed1 = 170;
+      speed2 = 170;
+      Serial.println("Begrenzing"); 
+  } 
+} 
+        
+void loop()
+{
+ultrasoon();
+if (Serial.available())
+{
+      Serial.println("Geef commando op \n 1 : Automatisch rijden aan/uit \n w/s : Vooruit rijden \n a/d : achteruit rijden \n j / l : sturen \n 3 : leds aan \n 4 : naar links draaien \n 5 : naar rechts draaien \n 6 : stoppen \n 7 : led uit \n 8 : snelheid verlagen \n 9 : snelheid verhogen");
+      char x = Serial.read();
+       
+          
+  
+          if (x == 'j' || x == 'w' || x == 's' || x == 'l')// vooruit
+              {
+                 driveForward();
+              }
+        
+          if (x == '2' || x == 'a' || x == 'd')//achteruit
+              {
+                driveBackward();
+              }
+        
+          if (x == '3')//lampen
+              {
+                ledStatus(1);
+              }
+        
+          if (x == '4')//draailinks
+              {
+                driveLeft();
+              }
+        
+          if (x == '5')//draairechts
+              {
+                driveRight();
+              }
+        
+          if (x == '6')// stop
+              {
+                driveStop();
+              }
+        
+          if (x == '7')//lampen uit
+              {
+                ledStatus(0);
+              }
+          if (x == '9'|| x == 'w' || x == 'a')//snelheid verhogen
+              {
+                driveSpeed(ON);
+              }
+          if (x == '8' || x == 's' || x == 'd') //snelheid verlagen
+                driveSpeed(OFF);
+            
+          if (x == 'j')
+             driveSpeedLeft();
+                    
+          if (x == 'l')
+             driveSpeedRight();
+          
+          if (x == '1')
+              // ultrasoon(); // Proberen met werkende ultrasoon
+              Automatisch();          
+              
+    }
+} 
